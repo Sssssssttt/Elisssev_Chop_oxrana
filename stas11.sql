@@ -95,7 +95,7 @@ CREATE TABLE `employee_documents` (
   PRIMARY KEY (`id`),
   KEY `employee_id` (`employee_id`),
   CONSTRAINT `employee_documents_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -104,7 +104,7 @@ CREATE TABLE `employee_documents` (
 
 LOCK TABLES `employee_documents` WRITE;
 /*!40000 ALTER TABLE `employee_documents` DISABLE KEYS */;
-INSERT INTO `employee_documents` VALUES (1,1,'4510 123456','ID123456','SEC-98765','2026-12-31'),(2,2,'4510 654321','ID654321','SEC-12345','2025-05-31'),(3,3,'4510 654324','ID654355','SEC-67445','2025-06-30');
+INSERT INTO `employee_documents` VALUES (1,1,'4510 123456','ID123456','SEC-98765','2026-12-31'),(2,2,'4510 654321','ID654321','SEC-12345','2025-05-31'),(3,3,'4510 654324','ID654355','SEC-67445','2025-06-30'),(4,4,'2818383232','393689360719','22342342333','2026-12-31');
 /*!40000 ALTER TABLE `employee_documents` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -126,7 +126,7 @@ CREATE TABLE `employees` (
   PRIMARY KEY (`id`),
   KEY `position_id` (`position_id`),
   CONSTRAINT `employees_ibfk_1` FOREIGN KEY (`position_id`) REFERENCES `positions` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -135,9 +135,31 @@ CREATE TABLE `employees` (
 
 LOCK TABLES `employees` WRITE;
 /*!40000 ALTER TABLE `employees` DISABLE KEYS */;
-INSERT INTO `employees` VALUES (1,'Иванов Иван Иванович',1,'+7 900 111-22-33','ivanov@gmail.ru','2023-01-15',45000.00),(2,'Бушка Андрей Анатольевич',2,'+7 911 464-85-06','andreu@gmail.com','2023-05-10',80000.00),(3,'Смирнова Анна Сергеевна',3,'+7 900 444-55-66','smirnova@gmail.ru','2022-06-10',70000.00);
+INSERT INTO `employees` VALUES (1,'Иванов Иван Иванович',1,'+7 900 111-22-33','ivanov@gmail.ru','2023-01-15',45000.00),(2,'Бушка Андрей Анатольевич',2,'+7 911 464-85-06','andreu@gmail.com','2023-05-10',80000.00),(3,'Смирнова Анна Сергеевна',3,'+7 900 444-55-66','smirnova@gmail.ru','2022-06-10',70000.00),(4,'Егор Рожков Иванович',2,'+7 923 465 74 73','egorroj@n0maci.ru','2024-05-23',55000.00);
 /*!40000 ALTER TABLE `employees` ENABLE KEYS */;
 UNLOCK TABLES;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `before_salary_update` BEFORE UPDATE ON `employees` FOR EACH ROW BEGIN
+    DECLARE msg_text VARCHAR(255);
+    
+    IF NEW.salary > OLD.salary THEN
+        SET msg_text = CONCAT('Зарплата сотрудника "', NEW.full_name, '" увеличена с ', OLD.salary, ' до ', NEW.salary);
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = msg_text;
+    END IF;
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `payments`
@@ -286,6 +308,70 @@ UNLOCK TABLES;
 --
 -- Dumping routines for database 'chop_oxrana'
 --
+/*!50003 DROP FUNCTION IF EXISTS `get_salary_level` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`root`@`localhost` FUNCTION `get_salary_level`(salary DECIMAL(10,2)) RETURNS varchar(20) CHARSET utf8mb4
+    DETERMINISTIC
+BEGIN
+    DECLARE level VARCHAR(20);
+
+    IF salary < 30000 THEN
+        SET level = 'Низкий уровень';
+    ELSEIF salary >= 30000 AND salary < 70000 THEN
+        SET level = 'Средний уровень';
+    ELSE
+        SET level = 'Высокий уровень';
+    END IF;
+
+    RETURN level;
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 DROP PROCEDURE IF EXISTS `AddEmployee` */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `AddEmployee`(
+    IN p_full_name VARCHAR(150),
+    IN p_position_id INT,
+    IN p_phone VARCHAR(20),
+    IN p_email VARCHAR(100),
+    IN p_hire_date DATE,
+    IN p_salary DECIMAL(10,2),
+    IN p_passport VARCHAR(50),
+    IN p_id_card VARCHAR(50),
+    IN p_security_license VARCHAR(50),
+    IN p_valid_until DATE
+)
+BEGIN
+    INSERT INTO employees(full_name, position_id, phone, email, hire_date, salary)
+    VALUES (p_full_name, p_position_id, p_phone, p_email, p_hire_date, p_salary);
+    SET @emp_id = LAST_INSERT_ID();
+    INSERT INTO employee_documents(employee_id, passport_number, id_card, security_license, valid_until)
+    VALUES (@emp_id, p_passport, p_id_card, p_security_license, p_valid_until);
+END ;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -296,4 +382,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-05-19 17:56:21
+-- Dump completed on 2025-06-24 22:45:30
