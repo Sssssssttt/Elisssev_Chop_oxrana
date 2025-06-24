@@ -34,18 +34,20 @@ WHERE id = (
 
 ---
 
-3. **Отработанные часы сотрудника за период**
+3. **Выводит всех клиентов и их объекты охраны**
 
 ```sql
-SELECT shift_date, TIMEDIFF(shift_end, shift_start) AS hours_worked
-FROM shifts
-WHERE employee_id = (
-  SELECT id FROM employees WHERE full_name = 'Иван Иван Иванович'
-)
-AND shift_date BETWEEN '2024-04-01' AND '2024-04-15';
+SELECT 
+  c.company_name,
+  so.name AS security_object_name,
+  so.address
+FROM clients c
+LEFT JOIN security_objects so ON c.id = so.client_id
+ORDER BY c.company_name;
+
 ```
 
-*Показывает количество часов, отработанных сотрудником за заданный период.*
+*Показывает название охранной организации, клиента и город в котором они работают.*
 
 ---
 
@@ -75,7 +77,7 @@ GROUP BY p.title;
 
 ---
 
-## Хранимые процедуры
+## Хранимая процедура
 
 ### Процедура для добавления нового сотрудника с документами
 
@@ -126,36 +128,49 @@ CALL AddEmployee(
 ## Триггеры
 
 ```sql
-CREATE TRIGGER before_employee_delete
-BEFORE DELETE ON employees
+DELIMITER $$
+
+CREATE TRIGGER before_salary_update
+BEFORE UPDATE ON employees
 FOR EACH ROW
 BEGIN
-  DELETE FROM employee_documents WHERE employee_id = OLD.id;
-END;
+    DECLARE msg_text VARCHAR(255);
+    
+    IF NEW.salary > OLD.salary THEN
+        SET msg_text = CONCAT('Зарплата сотрудника "', NEW.full_name, '" увеличена с ', OLD.salary, ' до ', NEW.salary);
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = msg_text;
+    END IF;
+END $$
+
+DELIMITER ;
+
 ```
 
-*Триггер автоматически удаляет документы сотрудника при удалении записи из таблицы `employees`.*
+*Срабатывает перед обновлением строки в таблице `employees`. Сравнивает старую зарплату (OLD.salary) и новую (NEW.salary). Если зарплата увеличилась, выдает сообщение с помощью SIGNAL SQLSTATE '45000'*
 
 ---
 
 ## Функции
 
 ```sql
-CREATE FUNCTION CheckINN(inn VARCHAR(12)) RETURNS BOOLEAN
+CREATE FUNCTION get_salary_level(salary DECIMAL(10,2))
+RETURNS VARCHAR(20)
+DETERMINISTIC
 BEGIN
-  RETURN TRUE; -- или FALSE в зависимости от проверки
-END;
+    DECLARE level VARCHAR(20);
+
+    IF salary < 30000 THEN
+        SET level = 'Низкий уровень';
+    ELSEIF salary >= 30000 AND salary < 70000 THEN
+        SET level = 'Средний уровень';
+    ELSE
+        SET level = 'Высокий уровень';
+    END IF;
+
+    RETURN level;
+END
 ```
-*Функция проверяет корректность ИНН.*
-
----
-
-## Представления
-
-```sql
-SELECT * FROM detail_employees;
-```
-*Представление для удобного просмотра информации по сотрудникам.*
+*Функция определяет "уровень зарплаты" сотрудника на основе её числового значения.*
 
 ---
 
@@ -171,18 +186,3 @@ GRANT SELECT ON chop_oxrana.clients TO LeaderUser;
 GRANT SELECT, INSERT ON chop_oxrana.shifts TO LeaderUser;
 ```
 *Роль с правами на просмотр сотрудников и создание смен.*
-
----
-
-```sql
-CREATE ROLE IF NOT EXISTS Specialist;
-GRANT SELECT, INSERT, UPDATE ON chop_oxrana.employees TO Specialist;
-GRANT SELECT, INSERT, UPDATE ON chop_oxrana.employee_documents TO Specialist;
-GRANT SELECT, INSERT, UPDATE ON chop_oxrana.positions TO Specialist;
-GRANT SELECT ON chop_oxrana.shifts TO Specialist;
-GRANT SELECT, INSERT ON chop_oxrana.payments TO Specialist;
-GRANT EXECUTE ON FUNCTION chop_oxrana.CheckINN TO Specialist;
-GRANT EXECUTE ON PROCEDURE chop_oxrana.AddEmployee TO Specialist;
-GRANT EXECUTE ON PROCEDURE chop_oxrana.SalaryReport TO Specialist;
-```
-*Роль с расширенными правами управления сотрудниками, документами и выплатами.*
